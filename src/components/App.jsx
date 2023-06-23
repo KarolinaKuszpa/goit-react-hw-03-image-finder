@@ -1,67 +1,87 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Searchbar from './Searchbar';
-import ImageGallery from './ImageGallery';
-import Loader from './Loader';
-import Button from './Button';
-import Modal from './Modal';
-import styles from './styles.module.css';
+import Searchbar from './Searchbar/Searchbar';
+import ImageGallery from './ImageGallery/ImageGallery';
+import CustomLoader from './Loader/Loader';
+import Button from './Button/Button';
+import Modal from './Modal/Modal';
+import styles from './App.module.css';
+
+const API_KEY = '36135104-b4eff6e01978aa2902705eb38';
 
 const App = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [images, setImages] = useState([]);
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   useEffect(() => {
-    if (searchQuery === '') return;
+    if (selectedImage) {
+      console.log('Wybrany obraz:', selectedImage);
+    }
+  }, [selectedImage]);
 
-    const fetchImages = async () => {
-      setIsLoading(true);
-
-      try {
-        const response = await axios.get(
-          `https://pixabay.com/api/?q=${searchQuery}&page=${page}&key=YOUR_API_KEY&image_type=photo&orientation=horizontal&per_page=12`
-        );
-        setImages(prevImages => [...prevImages, ...response.data.hits]);
-        setPage(prevPage => prevPage + 1);
-      } catch (error) {
-        console.log('Error fetching images:', error);
-      }
-
-      setIsLoading(false);
-    };
-
-    fetchImages();
-  }, [searchQuery, page]);
-
-  const handleSearchSubmit = query => {
-    setSearchQuery(query);
-    setPage(1);
-    setImages([]);
+  const searchImages = async keyword => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `https://pixabay.com/api/?q=${keyword}&page=1&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+      );
+      setImages(response.data.hits);
+      setCurrentPage(1);
+      setSearchKeyword(keyword);
+    } catch (error) {
+      console.error('Błąd podczas wyszukiwania obrazów:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLoadMore = () => {
-    setPage(prevPage => prevPage + 1);
+  const loadMoreImages = async () => {
+    setLoading(true);
+    try {
+      const nextPage = currentPage + 1;
+      const response = await axios.get(
+        `https://pixabay.com/api/?q=${searchKeyword}&page=${nextPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+      );
+      setImages(prevImages => [...prevImages, ...response.data.hits]);
+      setCurrentPage(nextPage);
+    } catch (error) {
+      console.error('Błąd podczas ładowania kolejnych obrazów:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleImageClick = image => {
-    setSelectedImage(image);
+  const openModal = (imageUrl, alt) => {
+    setSelectedImage({ imageUrl, alt });
   };
 
-  const handleCloseModal = () => {
+  const closeModal = () => {
     setSelectedImage(null);
   };
 
   return (
     <div className={styles.app}>
-      <Searchbar onSubmit={handleSearchSubmit} />
-      <ImageGallery images={images} onImageClick={handleImageClick} />
-      {isLoading && <Loader />}
-      {images.length > 0 && !isLoading && <Button onClick={handleLoadMore} />}
+      <Searchbar onSubmit={searchImages} />
+
+      {loading ? (
+        <CustomLoader />
+      ) : (
+        <ImageGallery images={images} openModal={openModal} />
+      )}
+
+      {images.length > 0 && !loading && (
+        <Button onClick={loadMoreImages}>Załaduj więcej</Button>
+      )}
+
       {selectedImage && (
-        <Modal image={selectedImage} onClose={handleCloseModal} />
+        <Modal
+          imageUrl={selectedImage.imageUrl}
+          alt={selectedImage.alt}
+          onClose={closeModal}
+        />
       )}
     </div>
   );
