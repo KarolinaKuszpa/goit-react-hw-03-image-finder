@@ -9,6 +9,13 @@ import styles from './App.module.css';
 
 const API_KEY = '36135104-b4eff6e01978aa2902705eb38';
 
+const fetchImages = async (keyword, page = 1) => {
+  const response = await axios.get(
+    `https://pixabay.com/api/?q=${keyword}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+  );
+  return response.data.hits;
+};
+
 const App = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,10 +32,8 @@ const App = () => {
   const searchImages = async keyword => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `https://pixabay.com/api/?q=${keyword}&page=1&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-      );
-      setImages(response.data.hits);
+      const images = await fetchImages(keyword);
+      setImages(images);
       setCurrentPage(1);
       setSearchKeyword(keyword);
     } catch (error) {
@@ -42,10 +47,8 @@ const App = () => {
     setLoading(true);
     try {
       const nextPage = currentPage + 1;
-      const response = await axios.get(
-        `https://pixabay.com/api/?q=${searchKeyword}&page=${nextPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-      );
-      setImages(prevImages => [...prevImages, ...response.data.hits]);
+      const newImages = await fetchImages(searchKeyword, nextPage);
+      setImages(prevImages => [...prevImages, ...newImages]);
       setCurrentPage(nextPage);
     } catch (error) {
       console.error('Błąd podczas ładowania kolejnych obrazów:', error);
